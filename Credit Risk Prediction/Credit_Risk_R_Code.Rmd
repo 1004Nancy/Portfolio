@@ -1,9 +1,4 @@
 ---
-title: "Untitled"
-author: "NancyLi"
-date: '2022-12-04'
-output: html_document
----
 ```{r}
 library(tidyverse)
 library(tidymodels)
