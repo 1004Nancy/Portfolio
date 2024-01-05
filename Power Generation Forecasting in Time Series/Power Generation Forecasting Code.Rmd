@@ -1,0 +1,200 @@
+---
+title: "Group Project"
+output:
+  html_document:
+    df_print: paged
+---
+
+
+## Load Libraries 
+
+```{r warning=FALSE, message=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(janitor)
+library(skimr)
+library(kableExtra)
+library(GGally)
+library(vip)        
+library(fastshap)   
+library(MASS)
+library(ISLR)
+library(tree)
+library(ggplot2)
+library(dplyr)
+library(lubridate)
+library(imputeTS)
+library(urca)
+library(pracma)
+library(fpp2)
+library(astsa)
+#install.packages("forecast")
+library(forecast)
+
+```
+
+## Turbine data input
+
+```{r}
+turbine <- read_csv("Turbine_Data.csv") %>%
+  clean_names() %>%
+  mutate(date = as.Date(date, format="%m/%d/%Y"))
+
+turbine
+skim(turbine)
+```
+
+
+
+## Plot raw transactional data
+
+```{r}
+
+turbine %>%
+ggplot(aes(x = date, y = active_power)) +
+      geom_point() +
+      labs(title = "Amount of Active Power",
+           subtitle = "Raw Data",
+           y = "Amount of Active Power",
+           x = "Date") 
+
+```
+
+## Accumulate Using a Daily Index
+```{r}
+
+turbine_clean <- turbine 
+#active power
+turbine_clean$active_power[is.na(turbine_clean$active_power)]<- mean(turbine_clean$active_power, na.rm =TRUE)  
+#ambient_temperature
+turbine_clean$ambient_temperature[is.na(turbine_clean$ambient_temperature)]<- mean(turbine_clean$ambient_temperature, na.rm =TRUE)
+#wind_direction
+turbine_clean$wind_direction[is.na(turbine_clean$wind_direction)]<- mean(turbine_clean$wind_direction, na.rm =TRUE)
+#wind_speed
+turbine_clean$wind_speed[is.na(turbine_clean$wind_speed)]<- mean(turbine_clean$wind_speed, na.rm =TRUE)
+
+turbine_clean
+
+# 1. ACCUMULATE
+
+turbine_day <- turbine_clean %>%
+  group_by(year, month, day) %>%
+  summarize(sum_active_power = sum(active_power),
+            avg_ambient_temperature = mean(ambient_temperature),
+            avg_wind_direction = mean(wind_direction),
+            avg_wind_speed = mean(wind_speed))
+head(turbine_day)
+skim(turbine_day)
+
+turbine_day <- subset(turbine_day, select=-c(year, month, day))
+turbine_day
+
+```
+
+
+
+#Exploratory analysis of three variables
+```{r}
+ggplot(turbine_day, aes(x=avg_ambient_temperature, y=sum_active_power)) + geom_point() + labs(title = "Daily avg ambient temperature") 
+ggplot(turbine_day, aes(x=avg_wind_direction, y=sum_active_power)) + geom_point() + labs(title = "Daily avg wind direction") 
+ggplot(turbine_day, aes(x=avg_wind_speed, y=sum_active_power)) + geom_point() + labs(title = "Daily avg wind speed") 
+
+```
+
+
+
+
+## Create a time series object for the data
+```{r,warning=FALSE}
+
+# Create time series object and plot time series
+
+ts_prep <- subset(turbine_day, select=c(sum_active_power))
+turbine_ts <- ts(ts_prep, start=c(2018,1), frequency = 365)
+plot(turbine_ts)
+ggAcf(turbine_ts)
+ggPacf(turbine_ts)
+
+```
+
+# Model 1: Which explanatory variables are important?
+```{r}
+
+#set pdq=0, xreg= linear model
+fit1_AR1 <- sarima(turbine_ts, 0, 0, 0, xreg=turbine_day[,2:4]) #matrice of all variables
+summary(fit1_AR1)
+fit1_AR1
+#check p value and drop insignificant, in this case, drop avg_wind direction 
+#acf some significant doesn't capture
+#
+```
+
+
+
+# Model 2
+```{r}
+
+xreg2 <- subset(turbine_day, select=-c(avg_wind_direction))
+
+fit2_AR1 <- sarima(turbine_ts, 3 , 0, 0, xreg=xreg2[,2:3])
+summary(fit2_AR1)
+fit2_AR1
+
+#all variables are significant
+#all ar terms are significant 
+#but there are still significant in acf
+#but not quite white noise
+
+```
+
+# Model 3 with autoregressive terms
+```{r}
+
+fit3_AR1 <- sarima(turbine_ts, 4 , 0, 0, xreg=xreg2[,2:3])
+summary(fit3_AR1)
+fit3_AR1
+
+# Create matrix of covariates for next 3 time periods
+
+xdat <- c(200,449,265,220,343,283,225,300,246)
+xdat1 <- matrix(xdat,nrow=3,ncol=3,byrow=TRUE)
+
+xregmat = as.matrix(xreg2[,2:3])
+
+# re-run model with Arima and produce forecast for next 3 months
+
+fit3_v2 <- Arima(turbine_ts, order=c(4, 0, 0), xreg=xregmat)#only works for matrix
+#Arima could forecast variable
+
+forecast(fit3_v2, xreg = xdat1,#value for the next 3 time period
+         h = 3)
+autoplot(forecast(fit3_v2, xreg=xdat1, h=3))
+
+#all  ar terms significant
+#x variables significant
+#relatively low forecasting
+#residual may not quite be white noise
+
+summary(fit3_v2)
+```
+
+
+
+
+### 4. auto.arima
+## Model 1: Compare to auto.arima 
+
+```{r}
+
+fit_auto <- auto.arima(turbine_ts)
+summary(fit_auto)
+checkresiduals(fit_auto)
+accuracy(fit_auto)
+
+forecast(fit_auto, h=5)
+
+fit_auto %>% forecast() %>% autoplot()
+
+```
+
+
