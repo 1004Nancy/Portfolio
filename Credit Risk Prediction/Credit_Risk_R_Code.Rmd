@@ -26,7 +26,7 @@ library(DALEXtra)
 ```
 
 ```{r}
-loan <- read_csv("/Users/nancyli/Desktop/BAN 6053 - Intro To ML/Final Loan Default/loan_train.csv") %>%
+loan <- read_csv("loan_train.csv") %>%
   clean_names()
 
 head(loan)
@@ -1029,7 +1029,7 @@ as_tibble(nn_inq_last_6mths$agr_profiles) %>%
 ```
 
 ```{r}
-loan_kaggle <- read_csv("/Users/nancyli/Desktop/BAN 6053 - Intro To ML/Final Loan Default/loan_holdout.csv") 
+loan_kaggle <- read_csv("loan_holdout.csv") 
 loan_kaggle %>% skim()
 
 scored_kaggle <- predict(xgb_final, loan_kaggle, type="prob") %>%
@@ -1037,6 +1037,6 @@ scored_kaggle <- predict(xgb_final, loan_kaggle, type="prob") %>%
       dplyr::select(id, .pred_default)
 
 scored_kaggle %>%
-  write_csv("my_kaggle_submission_loan.csv")
+  write_csv("submission_loan.csv")
 ```
 
