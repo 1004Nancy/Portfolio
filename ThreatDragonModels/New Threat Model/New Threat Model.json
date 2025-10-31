@@ -1580,6 +1580,42 @@
                 "y": 390
               }
             ]
+          },
+          {
+            "shape": "trust-boundary-curve",
+            "width": 200,
+            "height": 100,
+            "zIndex": 10,
+            "connector": "smooth",
+            "data": {
+              "type": "tm.Boundary",
+              "name": "Internet Boundary",
+              "description": "",
+              "isTrustBoundary": true,
+              "hasOpenThreats": false
+            },
+            "labels": [
+              "Internet Boundary"
+            ],
+            "id": "4f08c2d9-e3ae-4edc-98d4-4d3189643da0",
+            "source": {
+              "x": 810,
+              "y": 2
+            },
+            "target": {
+              "x": 890,
+              "y": 500
+            },
+            "vertices": [
+              {
+                "x": 730,
+                "y": 80
+              },
+              {
+                "x": 730,
+                "y": 340
+              }
+            ]
           }
         ]
       }
